@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Take2Cash</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+</head>
+<body class="bg-gradient-to-b from-purple-100 to-purple-50 min-h-screen p-4">
+
+<h1 class="text-center text-3xl font-bold text-purple-700 mb-6">Take2Cash</h1>
+
+<!-- Login/Signup Section -->
+<div id="authSection" class="max-w-md mx-auto bg-white p-6 rounded-2xl shadow-lg">
+<h2 class="font-bold mb-4 text-xl text-purple-600">Signup / Login</h2>
+<input id="name" placeholder="Name (for signup)" class="w-full border p-3 mb-3 rounded-lg focus:ring-2 focus:ring-purple-400">
+<input id="email" type="email" placeholder="Email" class="w-full border p-3 mb-3 rounded-lg focus:ring-2 focus:ring-purple-400">
+<input id="pass" type="password" placeholder="Password" class="w-full border p-3 mb-3 rounded-lg focus:ring-2 focus:ring-purple-400">
+<input id="referral" placeholder="Friend UID (optional)" class="w-full border p-3 mb-3 rounded-lg focus:ring-2 focus:ring-purple-400">
+<button id="signupBtn" class="w-full bg-purple-600 text-white p-3 rounded-lg mb-3 hover:bg-purple-700">Sign Up</button>
+<button id="loginBtn" class="w-full bg-green-500 text-white p-3 rounded-lg mb-2 hover:bg-green-600">Log In</button>
+<div id="msg" class="text-red-500 text-sm mt-1 text-center"></div>
+</div>
+
+<!-- Dashboard Section -->
+<div id="dashSection" class="hidden max-w-md mx-auto mt-6 bg-white p-6 rounded-2xl shadow-lg">
+<h2 class="font-bold text-purple-700 text-xl mb-3">Dashboard</h2>
+<p>Hi, <span id="userName">—</span></p>
+<p>Balance: <span id="balance">0 Taka</span></p>
+<p>Your Referral ID: <span id="userUID">—</span></p>
+
+<button id="activateBtn" class="w-full bg-green-500 text-white p-3 rounded-lg mb-3 hover:bg-green-600">Activate Account (300 Taka)</button>
+<p id="activationStatus" class="text-sm text-gray-500 mb-3">Not active</p>
+
+<h3 class="font-bold mt-2 mb-2 text-purple-600">Daily Reward</h3>
+<button id="dailyRewardBtn" class="w-full bg-yellow-400 text-white p-3 rounded-lg mb-2 hover:bg-yellow-500">Claim 5 Taka</button>
+<p id="dailyRewardStatus" class="text-sm text-gray-500 mb-3"></p>
+
+<!-- Spin Game Section -->
+<h3 class="font-bold mt-4 mb-2 text-purple-600">Spin Game</h3>
+<div class="relative w-64 h-64 mx-auto mb-3">
+    <canvas id="spinWheel" width="256" height="256" class="rounded-full border-4 border-purple-400"></canvas>
+    <!-- Pointer -->
+    <div class="absolute top-1/2 left-1/2 w-0 h-0 border-l-8 border-r-8 border-b-24 border-l-transparent border-r-transparent border-b-red-600 -translate-x-1/2 -translate-y-full"></div>
+</div>
+<button id="spinBtn" class="w-full bg-pink-500 text-white p-3 rounded-lg mb-2 hover:bg-pink-600">Spin</button>
+<p id="spinResult" class="text-sm text-gray-500 mb-3 text-center"></p>
+
+<h3 class="font-bold mt-2 mb-2 text-purple-600">Withdraw</h3>
+<input id="withdrawPhone" placeholder="Phone number" class="w-full border p-3 mb-2 rounded-lg focus:ring-2 focus:ring-purple-400">
+<input id="withdrawAmount" placeholder="Amount" class="w-full border p-3 mb-2 rounded-lg focus:ring-2 focus:ring-purple-400">
+<button id="withdrawBtn" class="w-full bg-blue-500 text-white p-3 rounded-lg mb-2 hover:bg-blue-600">Submit Withdraw</button>
+<p id="withdrawStatus" class="text-sm text-gray-500 mb-3"></p>
+
+<h3 class="font-bold mt-2 mb-2 text-purple-600">Deposit</h3>
+<p class="mb-2 text-sm">Send money to Bkash: <span class="font-bold">01312106894</span></p>
+<input id="depositPhone" placeholder="Sender number" class="w-full border p-3 mb-2 rounded-lg focus:ring-2 focus:ring-purple-400">
+<input id="depositAmount" placeholder="Amount" class="w-full border p-3 mb-2 rounded-lg focus:ring-2 focus:ring-purple-400">
+<button id="depositBtn" class="w-full bg-green-500 text-white p-3 rounded-lg mb-3 hover:bg-green-600">Submit Deposit</button>
+<p id="depositStatus" class="text-sm text-gray-500 mb-3"></p>
+
+<!-- WhatsApp Helpline -->
+<div class="mt-6 flex items-center justify-center space-x-2">
+  <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" class="w-6 h-6">
+  <a href="https://wa.me/8801307477668" target="_blank" class="text-green-600 font-bold">01307477668</a>
+</div>
+
+<button id="logoutBtn" class="w-full bg-red-500 text-white p-3 rounded-lg hover:bg-red-600 mt-4">Logout</button>
+</div>
+
+<script>
+// Firebase config
+var firebaseConfig = {
+    apiKey: "AIzaSyCf3PHTZHHBDvfx3Eeju4wRqGC0UNGfix4",
+    authDomain: "take2cashbot.firebaseapp.com",
+    projectId: "take2cashbot",
+    storageBucket: "take2cashbot.firebasestorage.app",
+    messagingSenderId: "1061709627457",
+    appId: "1:1061709627457:web:af16302a2d569641b186c0"
+};
+firebase.initializeApp(firebaseConfig);
+var auth = firebase.auth();
+var db = firebase.firestore();
+
+function showMsg(el,text){el.innerText=text;}
+
+// Signup
+document.getElementById('signupBtn').onclick = function(){
+    var name = document.getElementById('name').value;
+    var email = document.getElementById('email').value;
+    var pass = document.getElementById('pass').value;
+    var referral = document.getElementById('referral').value;
+    if(!name || !email || !pass){ showMsg(document.getElementById('msg'),'Enter all fields'); return; }
+
+    auth.createUserWithEmailAndPassword(email, pass)
+    .then(cred=>{
+        db.collection('users').doc(cred.user.uid).set({
+          name:name,
+          balance:0,
+          active:false,
+          referrer:referral
+        }).then(()=>{ showMsg(document.getElementById('msg'),'Signup successful!'); });
+    }).catch(err=>showMsg(document.getElementById('msg'),err.message));
+};
+
+// Login
+document.getElementById('loginBtn').onclick = function(){
+    var email=document.getElementById('email').value;
+    var pass=document.getElementById('pass').value;
+    auth.signInWithEmailAndPassword(email,pass)
+    .then(cred=>{
+        document.getElementById('authSection').classList.add('hidden');
+        document.getElementById('dashSection').classList.remove('hidden');
+        loadDashboard(cred.user.uid);
+    }).catch(err=>showMsg(document.getElementById('msg'),err.message));
+};
+
+// Logout
+document.getElementById('logoutBtn').onclick = function(){
+    auth.signOut();
+    document.getElementById('dashSection').classList.add('hidden');
+    document.getElementById('authSection').classList.remove('hidden');
+    showMsg(document.getElementById('msg'),'Logged out');
+};
+
+// Load Dashboard
+function loadDashboard(uid){
+    db.collection('users').doc(uid).get().then(doc=>{
+        var data = doc.data();
+        document.getElementById('userName').innerText = data.name;
+        document.getElementById('balance').innerText = data.balance + " Taka";
+        document.getElementById('userUID').innerText = uid;
+        if(data.active){
+            document.getElementById('activationStatus').innerText='Active';
+            document.getElementById('activateBtn').style.display='none';
+        }
+    });
+}
+
+// Activate
+document.getElementById('activateBtn').onclick = function(){
+    var user = auth.currentUser;
+    if(!user) return;
+    var userRef = db.collection('users').doc(user.uid);
+    userRef.get().then(doc=>{
+        var data = doc.data();
+        if(data.balance>=300){
+            userRef.update({balance:data.balance-300,active:true}).then(()=>{
+                document.getElementById('balance').innerText=(data.balance-300)+" Taka";
+                document.getElementById('activationStatus').innerText='Active';
+                document.getElementById('activateBtn').style.display='none';
+                alert('Account activated!');
+
+                if(data.referrer){
+                    db.collection('users').doc(data.referrer).get().then(rDoc=>{
+                        if(rDoc.exists){
+                            var rData = rDoc.data();
+                            db.collection('users').doc(data.referrer).update({
+                                balance:(rData.balance||0)+100
+                            });
+                        }
+                    });
+                }
+            });
+        } else { alert('Insufficient balance'); }
+    });
+}
+
+// Daily Reward
+document.getElementById('dailyRewardBtn').onclick = function(){
+    var user = auth.currentUser;
+    if(!user) return;
+    var now = Date.now();
+    var rewardRef = db.collection('dailyReward').doc(user.uid);
+    rewardRef.get().then(doc=>{
+        if(doc.exists && now-doc.data().lastClaim<24*60*60*1000){ alert('Already claimed today'); return; }
+        db.collection('users').doc(user.uid).get().then(u=>{
+            var data=u.data();
+            db.collection('users').doc(user.uid).update({balance:data.balance+5});
+            rewardRef.set({lastClaim:now});
+            document.getElementById('balance').innerText=(data.balance+5)+" Taka";
+            alert('5 Taka added!');
+        });
+    });
+}
+
+// Spin Game
+var wheelCanvas = document.getElementById('spinWheel');
+var wheelCtx = wheelCanvas.getContext('2d');
+var spinAmounts = [5,10,20,40,70,80,100];
+var colors = ['#fbb6ce','#fbcfe8','#f472b6','#ec4899','#db2777','#be185d','#831843'];
+var lastAngle = 0;
+
+function drawWheel(){
+    var startAngle = 0;
+    for(var i=0;i<spinAmounts.length;i++){
+        var arc = 2*Math.PI/spinAmounts.length;
+        wheelCtx.beginPath();
+        wheelCtx.moveTo(128,128);
+        wheelCtx.arc(128,128,128,startAngle,startAngle+arc);
+        wheelCtx.fillStyle=colors[i];
+        wheelCtx.fill();
+        wheelCtx.stroke();
+        wheelCtx.save();
+        wheelCtx.translate(128,128);
+        wheelCtx.rotate(startAngle+arc/2);
+        wheelCtx.textAlign="right";
+        wheelCtx.fillStyle="#fff";
+        wheelCtx.font="16px Arial";
+        wheelCtx.fillText(spinAmounts[i]+" Taka",120,0);
+        wheelCtx.restore();
+        startAngle+=arc;
+    }
+}
+drawWheel();
+
+document.getElementById('spinBtn').onclick = function(){
+    var user = auth.currentUser;
+    if(!user) return;
+
+    var userRef = db.collection('users').doc(user.uid);
+    var spinRef = db.collection('spinHistory').doc(user.uid);
+
+    userRef.get().then(doc=>{
+        var data = doc.data();
+        if(!data.active){ 
+            alert('You must activate your account to spin!'); 
+            return; 
+        }
+
+        spinRef.get().then(spinDoc=>{
+            var now = Date.now();
+            if(spinDoc.exists && now - spinDoc.data().lastSpin < 24*60*60*1000){
+                alert('You can spin only once per day!');
+                return;
+            }
+
+            var spinValue = Math.random() < 0.5 ? 5 : 10;
+            var newBalance = data.balance + spinValue;
+            var randomIndex = Math.floor(Math.random()*spinAmounts.length);
+            var spins = 8 + randomIndex;
+            var angle = spins * (2*Math.PI/spinAmounts.length);
+            var duration = 3000;
+            var start = null;
+
+            function animate(timestamp){
+                if(!start) start = timestamp;
+                var progress = timestamp - start;
+                var currentAngle = lastAngle + angle * (progress/duration);
+                wheelCtx.clearRect(0,0,256,256);
+                wheelCtx.save();
+                wheelCtx.translate(128,128);
+                wheelCtx.rotate(currentAngle);
+                wheelCtx.translate(-128,-128);
+                drawWheel();
+                wheelCtx.restore();
+                if(progress<duration){
+                    requestAnimationFrame(animate);
+                } else {
+                    lastAngle += angle;
+                    document.getElementById('balance').innerText = newBalance + " Taka";
+                    document.getElementById('spinResult').innerText = "You got "+spinValue+" Taka!";
+                    alert("Spin result: " + spinValue + " Taka added to your balance!");
+                }
+            }
+            requestAnimationFrame(animate);
+
+            userRef.update({balance:newBalance});
+            spinRef.set({lastSpin:now});
+        });
+    });
+};
+
+// Deposit
+document.getElementById('depositBtn').onclick = function(){
+    var user = auth.currentUser;
+    if(!user) return;
+    var phone=document.getElementById('depositPhone').value;
+    var amount=parseInt(document.getElementById('depositAmount').value);
+    db.collection('deposits').add({uid:user.uid,sender:phone,amount:amount,status:'pending'});
+    alert('Deposit submitted!');
+}
+
+// Withdraw
+document.getElementById('withdrawBtn').onclick = function(){
+    var user = auth.currentUser;
+    if(!user) return;
+    var phone=document.getElementById('withdrawPhone').value;
+    var amount=parseInt(document.getElementById('withdrawAmount').value);
+
+    if(!phone || !amount || amount<=0){ alert("Enter valid details!"); return; }
+
+    db.collection('users').doc(user.uid).get().then(doc=>{
+        var data = doc.data();
+        if(data.balance < amount){ alert("Insufficient balance!"); return; }
+
+        db.collection('users').where("referrer","==",user.uid).get().then(snap=>{
+            if(snap.size<3){ alert('Minimum 3 referrals needed'); return; }
+
+            db.collection('withdraws').add({
+                uid:user.uid,
+                phone:phone,
+                amount:amount,
+                status:'pending',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(()=>{
+                alert('Withdraw request submitted! Wait for admin approval.');
+                document.getElementById('withdrawPhone').value="";
+                document.getElementById('withdrawAmount').value="";
+            });
+        });
+    });
+}
+</script>
+
+</body>
+</html>
